@@ -2,7 +2,7 @@
 title: "Tableau d'analyse des moulins"
 output: 
   flexdashboard::flex_dashboard:
-   theme: paper
+   theme: bootstrap
    source_code: embed
 ---
 
@@ -12,52 +12,66 @@ knitr::opts_chunk$set(warning = F)
 knitr::opts_chunk$set(message = F)
 ```
 
-
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(tidyverse)
 library(DT)
 library(crosstalk)
 library(leaflet)
+library(GADMTools)
+library(hrbrthemes)
 ```
 
-Column {data-width=200}
------------------------------------------------------------------------
 
-### Chart A
+Page 1
+================================
+
+Column {data-width="150"}
+--------------------------------
+
+### Recherche sur les moulins
 
 ```{r}
 data <- read.csv("enquetes-sur-les-moulins-de-1794-1809.csv", sep = ";", encoding = "UTF-8") %>% 
-    filter(Pays == "France")
+    filter(Pays == "France") %>% 
+    rename(Commune = Commune.actuelle,
+           Departement = Département.actuel,
+           Date = Date.de.l.enquête,
+           Type = Type.de.moulin,
+           Nombre = Nombre.de.moulins,
+           Nom = Nom.du.moulin,
+           Description = Description.initiale,
+           url = URL.de.la.notice,
+           Cote = Cote.du.dossier) %>% 
+    select(Commune, Departement, Date, Type, Nombre, Nom, Description, url, Cote, Lat, Long)
+    
 
 st <- SharedData$new(data)
 ```
 
-
-
 ```{r filter_section}
+
 filter_select(
     id = "dep",
     label = "Département",
     sharedData = st,
-    group = ~Département.actuel
+    group = ~Departement
 )
 
-bscols(
-    filter_checkbox(
-        id ="type",
-        label = "Type de moulin",
-        sharedData = st,
-        group = ~Type.de.moulin
-    )
+filter_checkbox(
+    id ="type",
+    label = "Type de moulin",
+    sharedData = st,
+    group = ~Type
+
 )
 
 ```
 
-Column {data-width=800}
------------------------------------------------------------------------
+Column {data-width="800"}
+--------------------------------
 
-### Chart B
+### Table des moulins
 
 ```{r filterable_table}
 
@@ -65,18 +79,171 @@ datatable(st)
 
 ```
 
-### Chart C
+### Carte des moulins
 
 ```{r interactive_map}
 st %>% 
     leaflet() %>% 
     addProviderTiles("CartoDB.Positron") %>% 
     addCircles(
-        popup = ~paste0(data$Commune.actuelle,"<br />", 
-                        data$Date.de.l.enquête,"<br />",
-                        data$Nom.du.moulin)
+        popup = ~paste0(data$Commune,"<br />", 
+                        data$Date,"<br />",
+                        data$Nom)
     )
 
 ```
 
+Page 2
+==========================
+
+Column {data-width=500}
+-------------------------------------
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+# Sélection des moulins se situant en France
+
+nbmoul <- data %>% 
+    count(Date)
+    
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+
+# Nombre de moulins par enquête
+
+ggplot(nbmoul, aes(x=factor(Date, levels = c("an II", "an X", "1809")), y=n)) + 
+    geom_bar(stat = "identity", fill = "thistle3") +
+    labs(
+        x = "Année de l'enquête", 
+        y = "Nombre moulins", 
+        title = "Nombre de moulins par enquête") +
+    theme_ipsum()
+    
+```
+
+Column {data-width=500}
+-------------------------------------
+
+Seuls les moulins à eau et à vent ont été conservés car les autres types sont trop rares pour apparaître sur le graphique
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+typmoul <- data %>% 
+    count(Type, Date) %>% 
+    filter(Type == "moulin à eau" | Type == "moulin à vent")
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+ggplot(typmoul,aes(fill = Type, x=factor(Date, levels = c("an II", "an X", "1809")), y = n)) +
+    geom_bar(position = "stack", stat = "identity") +
+    geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 2.5) +
+    scale_fill_manual(values = c("thistle3", "turquoise3")) +
+    labs(
+        x = "Année de l'enquête",
+        y = "Nombre de moulins",
+        title = "Nombre de moulins par année et par type",
+        fill = "Légende"
+    ) +
+    theme_ipsum()
+```
+
+Page 3
+==========================
+
+Row
+-------------------------------------
+    
+### Chart 1
+    
+Meunier tu dors ?
+ 
+### **Carte des moulins recensés en l'An II**
+    
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+anII <- data %>% 
+    filter(Date == "an II" & Departement != "") %>% 
+    count(Departement)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+france <- gadm_sf_loadCountries("FRA", level=2)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+choropleth(france, 
+           data = anII,
+           value = "n", 
+           breaks = c(0,25,50,75,100,125,150,175,200,Inf),
+           adm.join = "Departement",
+           labels = c("de 0 à 25", "de 26 à 50", "de 51 à 75", "de 76 à 100", "de 101 à 125", "de 126 à 150", "de 151 à 175", "de 176 à 200", "Supérieur à 200"),
+           palette = "BuPu",
+           legend="Nombre de moulins",
+           title="Carte du nombre de moulins par département en l'An II")
+```
+
+Row
+-------------------------------------
+    
+### **Carte des moulins recensés en l'an X**
+    
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+anX <- data %>% 
+    filter(Date == "an X" & Departement != "") %>% 
+    count(Departement)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+france <- gadm_sf_loadCountries("FRA", level=2)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+choropleth(france, 
+           data = anX,
+           value = "n", 
+           breaks = c(0,100,200,300,400,500,600,700,Inf),
+           adm.join = "Departement",
+           labels = c("de 0 à 100", "de 101 à 200", "de 201 à 300", "de 301 à 400", "de 401 à 500", "de 501 à 600", "de 601 à 700", "Supérieur à 700"),
+           palette = "BuPu",
+           legend="Nombre de moulins",
+           title="Carte du nombre de moulins par département en l'An X")
+```
+    
+### **Carte des moulins recensés en 1809**
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+huitsansneuf <- data %>% 
+    filter(Date == "1809" & Departement != "") %>% 
+    count(Departement)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+france <- gadm_sf_loadCountries("FRA", level=2)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+choropleth(france, 
+           data = huitsansneuf,
+           value = "n", 
+           breaks = c(0,100,200,300,400,500,600,700,800,Inf),
+           adm.join = "Departement",
+           labels = c("de 0 à 100", "de 101 à 200", "de 201 à 300", "de 301 à 400", "de 401 à 500", "de 501 à 600", "de 601 à 700", "de 701 à 800", "Supérieur à 800"),
+           palette = "BuPu",
+           legend="Nombre de moulins",
+           title="Carte du nombre de moulins par département en 1809")
+```
 
