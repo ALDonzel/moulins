@@ -1,0 +1,189 @@
+---
+title: "analyse"
+author: "Anne-Laure Donzel"
+date: '2022-06-29'
+output: html_document
+---
+
+```{r setup, echo=FALSE, warning=FALSE, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(hrbrthemes)
+library(GADMTools)
+
+
+```
+
+DOC REALISE DANS LE CADRE D'UN APPRENTISSAGE DE R
+
+Analyse des données publiées par les Archives Nationales sur le portail data.culure.gouv sur [3 enquêtes sur les moulins](https://data.culture.gouv.fr/explore/dataset/enquetes-sur-les-moulins-de-1794-1809/information/?disjunctive.pays&disjunctive.departement_actuel&disjunctive.date&disjunctive.type&disjunctive.departement_ancien).
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+# Ouverture du fichier
+
+data <- read.csv("enquetes-sur-les-moulins-de-1794-1809.csv", sep = ";", encoding = "UTF-8")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+# Renommage des en-têtes de colonnes
+
+data <- data %>% 
+    rename(comm_new = Commune.actuelle,
+           dep_new = Département.actuel,
+           date = Date.de.l.enquête,
+           type = Type.de.moulin,
+           nbre = Nombre.de.moulins,
+           nom = Nom.du.moulin,
+           dep_old = Département.ancien,
+           comm_old = Commune.ancienne,
+           desc = Description.initiale,
+           url = URL.de.la.notice,
+           cote = Cote.du.dossier,
+           INSEE = Code.INSEE)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+# Sélection des moulins se situant en France
+
+nbmoul <- data %>% 
+    count(date)
+    
+
+```
+
+# Nombre de moulins par enquête
+
+```{r, echo=FALSE, warning=FALSE}
+
+# Nombre de moulins par enquête
+
+ggplot(nbmoul, aes(x=factor(date, levels = c("an II", "an X", "1809")), y=n)) + 
+    geom_bar(stat = "identity", fill = "thistle3") +
+    labs(
+        x = "Année de l'enquête", 
+        y = "Nombre moulins", 
+        title = "Nombre de moulins par enquête") +
+    theme_ipsum()
+    
+```
+# Type de moulins
+
+## Nombre de moulins par type et par année
+
+Seuls les moulins à eau et à vent ont été conservés car les autres types sont trop rares pour apparaître sur le graphique
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+typmoul <- data %>% 
+    count(type, date) %>% 
+    filter(type == "moulin à eau" | type == "moulin à vent")
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+ggplot(typmoul,aes(fill = type, x=factor(date, levels = c("an II", "an X", "1809")), y = n)) +
+    geom_bar(position = "stack", stat = "identity") +
+    geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 2.5) +
+    scale_fill_manual(values = c("thistle3", "turquoise3")) +
+    labs(
+        x = "Année de l'enquête",
+        y = "Nombre de moulins",
+        title = "Nombre de moulins par année et par type",
+        fill = "Légende"
+    ) +
+    theme_ipsum()
+```
+# Nombre de moulins par département
+
+Ces cartes sont réalisées sur la base des départements actuels français.
+
+## An II
+
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+anII <- data %>% 
+    filter(date == "an II" & dep_new != "") %>% 
+    count(dep_new)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+france <- gadm_sf_loadCountries("FRA", level=2)
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+
+choropleth(france, 
+           data = anII,
+           value = "n", 
+           breaks = c(0,25,50,75,100,125,150,175,200,Inf),
+           adm.join = "dep_new",
+           labels = c("de 0 à 25", "de 26 à 50", "de 51 à 75", "de 76 à 100", "de 101 à 125", "de 126 à 150", "de 151 à 175", "de 176 à 200", "Supérieur à 200"),
+           palette = "BuPu",
+           legend="Nombre de moulins",
+           title="Carte du nombre de moulins par département en l'An II")
+```
+## An X
+
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+anX <- data %>% 
+    filter(date == "an X" & dep_new != "") %>% 
+    count(dep_new)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+france <- gadm_sf_loadCountries("FRA", level=2)
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+
+choropleth(france, 
+           data = anX,
+           value = "n", 
+           breaks = c(0,100,200,300,400,500,600,700,Inf),
+           adm.join = "dep_new",
+           labels = c("de 0 à 100", "de 101 à 200", "de 201 à 300", "de 301 à 400", "de 401 à 500", "de 501 à 600", "de 601 à 700", "Supérieur à 700"),
+           palette = "BuPu",
+           legend="Nombre de moulins",
+           title="Carte du nombre de moulins par département en l'An X")
+```
+
+
+## 1809
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+huitsansneuf <- data %>% 
+    filter(date == "1809" & dep_new != "") %>% 
+    count(dep_new)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+france <- gadm_sf_loadCountries("FRA", level=2)
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+
+choropleth(france, 
+           data = huitsansneuf,
+           value = "n", 
+           breaks = c(0,100,200,300,400,500,600,700,800,Inf),
+           adm.join = "dep_new",
+           labels = c("de 0 à 100", "de 101 à 200", "de 201 à 300", "de 301 à 400", "de 401 à 500", "de 501 à 600", "de 601 à 700", "de 701 à 800", "Supérieur à 800"),
+           palette = "BuPu",
+           legend="Nombre de moulins",
+           title="Carte du nombre de moulins par département en 1809")
+```

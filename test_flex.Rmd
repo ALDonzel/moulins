@@ -1,0 +1,82 @@
+---
+title: "Tableau d'analyse des moulins"
+output: 
+  flexdashboard::flex_dashboard:
+   theme: paper
+   source_code: embed
+---
+
+```{r}
+knitr::opts_chunk$set(echo = F)
+knitr::opts_chunk$set(warning = F)
+knitr::opts_chunk$set(message = F)
+```
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(DT)
+library(crosstalk)
+library(leaflet)
+```
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+data <- read.csv("enquetes-sur-les-moulins-de-1794-1809.csv", sep = ";", encoding = "UTF-8") %>% 
+    filter(Pays == "France")
+
+st <- SharedData$new(data)
+```
+
+
+
+```{r filter_section}
+filter_select(
+    id = "dep",
+    label = "Département",
+    sharedData = st,
+    group = ~Département.actuel
+)
+
+bscols(
+    filter_checkbox(
+        id ="type",
+        label = "Type de moulin",
+        sharedData = st,
+        group = ~Type.de.moulin
+    )
+)
+
+```
+
+Column {data-width=800}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r filterable_table}
+
+datatable(st)
+
+```
+
+### Chart C
+
+```{r interactive_map}
+st %>% 
+    leaflet() %>% 
+    addProviderTiles("CartoDB.Positron") %>% 
+    addCircles(
+        popup = ~paste0(data$Commune.actuelle,"<br />", 
+                        data$Date.de.l.enquête,"<br />",
+                        data$Nom.du.moulin)
+    )
+
+```
+
+
