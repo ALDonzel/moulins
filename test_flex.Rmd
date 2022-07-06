@@ -82,15 +82,23 @@ datatable(st)
 ### Carte des moulins
 
 ```{r interactive_map}
+pal <- colorFactor(c("navy", "thistle3", "red", "blue", "turquoise3", "green"), domain = data$Type)
+
 st %>% 
     leaflet() %>% 
     addProviderTiles("CartoDB.Positron") %>% 
     addCircles(
         popup = ~paste0(data$Commune,"<br />", 
                         data$Date,"<br />",
-                        data$Nom)
-    )
-
+                        data$Nombre),
+        radius = data$Nombre * 100,
+        color = ~pal(Type),
+        stroke = FALSE, fillOpacity = 0.5
+    ) %>% 
+    addLegend("bottomright", pal = pal, values = data$Type,
+    title = "Type de moulins",
+    opacity = 1
+)
 ```
 
 Page 2
@@ -156,9 +164,14 @@ Page 3
 Row
 -------------------------------------
     
-### Chart 1
+### Nombre de moulins dans les 3 enquêtes
     
-Meunier tu dors ?
+```{r}
+nbr <- data %>% 
+    summarise(n())
+
+valueBox(nbr, icon = "fa-thin fa-wheat")
+```
  
 ### **Carte des moulins recensés en l'An II**
     
