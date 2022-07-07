@@ -20,6 +20,7 @@ library(crosstalk)
 library(leaflet)
 library(GADMTools)
 library(hrbrthemes)
+library(fontawesome)
 ```
 
 
@@ -82,15 +83,15 @@ datatable(st)
 ### Carte des moulins
 
 ```{r interactive_map}
-pal <- colorFactor(c("navy", "thistle3", "red", "blue", "turquoise3", "green"), domain = data$Type)
+pal <- colorFactor(c("navy", "thistle3", "firebrick1", "lightskyblue4", "turquoise3", "seagreen"), domain = data$Type)
 
 st %>% 
     leaflet() %>% 
     addProviderTiles("CartoDB.Positron") %>% 
     addCircles(
-        popup = ~paste0(data$Commune,"<br />", 
-                        data$Date,"<br />",
-                        data$Nombre),
+        popup = ~paste0("<b>", "Commune : ", data$Commune,"</b>", "<br />", 
+                        "Date de l'enquête : ", data$Date,"<br />",
+                        "Nombre de moulins : ", data$Nombre),
         radius = data$Nombre * 100,
         color = ~pal(Type),
         stroke = FALSE, fillOpacity = 0.5
@@ -104,37 +105,8 @@ st %>%
 Page 2
 ==========================
 
-Column {data-width=500}
+Row
 -------------------------------------
-
-```{r, echo=FALSE, warning=FALSE, include=FALSE}
-
-# Sélection des moulins se situant en France
-
-nbmoul <- data %>% 
-    count(Date)
-    
-
-```
-
-```{r, echo=FALSE, warning=FALSE}
-
-# Nombre de moulins par enquête
-
-ggplot(nbmoul, aes(x=factor(Date, levels = c("an II", "an X", "1809")), y=n)) + 
-    geom_bar(stat = "identity", fill = "thistle3") +
-    labs(
-        x = "Année de l'enquête", 
-        y = "Nombre moulins", 
-        title = "Nombre de moulins par enquête") +
-    theme_ipsum()
-    
-```
-
-Column {data-width=500}
--------------------------------------
-
-Seuls les moulins à eau et à vent ont été conservés car les autres types sont trop rares pour apparaître sur le graphique
 
 ```{r, echo=FALSE, warning=FALSE, include=FALSE}
 
@@ -158,6 +130,46 @@ ggplot(typmoul,aes(fill = Type, x=factor(Date, levels = c("an II", "an X", "1809
     theme_ipsum()
 ```
 
+Row {.tabset .tabset-fade}
+-------------------------------------
+   
+### Communes an II
+
+```{r}
+maxmoulII <- data %>%
+    filter(Date == "an II") %>% 
+    arrange(desc(Nombre), Commune) %>% 
+    head(10)%>% 
+    select(Commune, Departement, Nombre)
+
+datatable(maxmoulII)
+
+```   
+ 
+###  Communes an X
+    
+```{r}
+maxmoulX <- data %>%
+    filter(Date == "an X") %>% 
+    arrange(desc(Nombre), Commune) %>% 
+    head(10) %>% 
+    select(Commune, Departement, Nombre)
+
+datatable(maxmoulX)
+```
+ 
+### Communes 1809
+
+```{r}
+maxmoul1809 <- data %>%
+    filter(Date == "1809") %>% 
+    arrange(desc(Nombre), Commune) %>% 
+    head(10) %>% 
+    select(Commune, Departement, Nombre)
+
+datatable(maxmoul1809)
+```
+
 Page 3
 ==========================
 
@@ -170,7 +182,7 @@ Row
 nbr <- data %>% 
     summarise(n())
 
-valueBox(nbr, icon = "fa-thin fa-wheat")
+valueBox(nbr, icon = "fa-magnifying-glass")
 ```
  
 ### **Carte des moulins recensés en l'An II**
